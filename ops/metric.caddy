@@ -1,0 +1,6 @@
+metric.sec4.si {
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:9841 {
+		header_up X-Real-IP {remote_host}
+	}
+}

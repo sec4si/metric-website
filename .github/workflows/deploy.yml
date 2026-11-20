@@ -1,0 +1,85 @@
+name: Metric CI and deployment
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metric-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.4'
+      - name: Test application
+        run: |
+          go mod verify
+          go vet ./...
+          go test ./...
+          bash -n ops/bootstrap.sh
+          bash -n ops/install-release.sh
+          sh -n ops/ssh-deploy.sh
+      - name: Build Linux release
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: ${{ vars.METRIC_GOARCH || 'amd64' }}
+        run: |
+          case "$GOARCH" in amd64|arm64) ;; *) exit 1 ;; esac
+          go build -trimpath -ldflags "-s -w -X main.version=$GITHUB_SHA" -o bin/metric .
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: github.event_name != 'pull_request'
+        with:
+          name: metric-linux
+          path: bin/metric
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.METRIC_DEPLOY_READY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: production
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: metric-linux
+          path: bin
+      - name: Install and verify release
+        env:
+          METRIC_DEPLOY_KEY: ${{ secrets.METRIC_DEPLOY_KEY }}
+          METRIC_KNOWN_HOSTS: ${{ vars.METRIC_KNOWN_HOSTS }}
+          METRIC_SSH_HOST: ${{ vars.METRIC_SSH_HOST }}
+          METRIC_SSH_PORT: ${{ vars.METRIC_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          : "${METRIC_DEPLOY_KEY:?Set the production environment METRIC_DEPLOY_KEY secret}"
+          : "${METRIC_KNOWN_HOSTS:?Set the pinned host key}"
+          [[ "$METRIC_SSH_HOST" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]
+          [[ "$METRIC_SSH_PORT" =~ ^[0-9]{1,5}$ ]]
+          umask 077
+          sshdir=$(mktemp -d)
+          trap 'rm -rf -- "$sshdir"' EXIT
+          printf '%s\n' "$METRIC_DEPLOY_KEY" > "$sshdir/key"
+          printf '%s\n' "$METRIC_KNOWN_HOSTS" > "$sshdir/known_hosts"
+          ssh -T -i "$sshdir/key" -p "$METRIC_SSH_PORT" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$sshdir/known_hosts" -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+            "metric-deploy@$METRIC_SSH_HOST" deploy-metric < bin/metric
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --max-time 10 \
+            https://metric.sec4.si/healthz | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .version == $sha'

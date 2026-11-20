@@ -1,0 +1,34 @@
+[Unit]
+Description=sec4.si Metric
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sec4si-metric
+Group=sec4si-metric
+StateDirectory=sec4si-metric
+StateDirectoryMode=0700
+UMask=0077
+Environment=METRIC_ADDR=127.0.0.1:9841
+Environment=METRIC_ORIGIN=https://metric.sec4.si
+Environment=METRIC_ARTICLE_ORIGIN=https://sec4.si
+Environment=METRIC_DATABASE=/var/lib/sec4si-metric/metric.sqlite
+EnvironmentFile=-/etc/sec4si-metric/metric.env
+ExecStart=/opt/sec4si-metric/metric
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,166 @@
+{{define "header"}}<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090c09">
+  <title>{{.Title}} · sec4.si Metric</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="monogram" aria-hidden="true">[/]</span><span>sec4<span class="dot">.</span>si</span><span class="product">METRIC</span></a>
+    <nav aria-label="主导航">
+      {{if .Core}}<a href="/access">权限</a>{{end}}
+      {{if .User.Login}}{{if not .Article}}<a href="/dashboard">统计</a>
+      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="nav-button" type="submit">退出</button></form>{{end}}{{end}}
+      <a href="{{.ArticleOrigin}}/articles/">文章</a>
+    </nav>
+  </header>
+{{end}}
+
+{{define "footer"}}
+  <footer class="site-footer"><span class="mono">SEC4.SI / METRIC</span><a href="/privacy">阅读数据说明</a><a href="https://github.com/sec4si/metric-website">GitHub 源码</a></footer>
+</body>
+</html>{{end}}
+
+{{define "home"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="login">
+  <div class="login-copy">
+    <h1>Reader<br><em>Metrics<span class="dot">.</span></em></h1>
+    <p>查看 sec4.si 文章的访问次数，以及读者主动留下的 GitHub 阅读记录。</p>
+    {{if .OAuthReady}}
+    <a class="primary" href="/oauth/start">用 GitHub 登录</a>
+    {{else}}
+    <p class="notice" role="status">GitHub 登录正在配置。</p>
+    {{end}}
+    <p class="hint">后台供 sec4si 组织管理员使用。</p>
+  </div>
+  <div class="login-aside">
+    <dl>
+      <div><dt>匿名访问</dt><dd>按文章和时段查看浏览次数。</dd></div>
+      <div><dt>GitHub 阅读记录</dt><dd>查看读者确认提交的 GitHub ID。</dd></div>
+    </dl>
+  </div>
+</main>
+{{template "footer" .}}{{end}}
+
+{{define "dashboard"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="workspace">
+  <section class="page-intro">
+    <div><h1>阅读统计<span class="dot">.</span></h1><p>已登录 <b>@{{.User.Login}}</b></p></div>
+    <form class="filters" method="get" action="/dashboard">
+      <label>文章<select name="article"><option value="">全部文章</option>
+      {{if .Article}}<option value="{{.Article}}" selected>{{.Article}}</option>{{end}}
+      {{range .Articles}}{{if ne .Path $.Article}}<option value="{{.Path}}">{{.Path}}</option>{{end}}{{end}}
+      </select></label>
+      <label>时段<select name="days">
+        <option value="7" {{if eq .Period 7}}selected{{end}}>近 7 天</option>
+        <option value="30" {{if eq .Period 30}}selected{{end}}>近 30 天</option>
+        <option value="90" {{if eq .Period 90}}selected{{end}}>近 90 天</option>
+      </select></label>
+      <button class="primary" type="submit">查看</button>
+    </form>
+  </section>
+  <div class="paper">
+    <dl class="summary" aria-label="统计概览">
+      <div><dt>匿名访问次数</dt><dd>{{.Totals.Views}}</dd></div>
+      <div><dt>GitHub 读者数</dt><dd>{{.Totals.Readers}}</dd></div>
+      <div><dt>GitHub 阅读记录</dt><dd>{{.Totals.Records}}</dd></div>
+    </dl>
+    <section class="data-section" aria-labelledby="articles-title">
+      <h2 id="articles-title">按文章查看</h2>
+      {{if .Articles}}
+      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="articles-title">
+      <table><thead><tr><th scope="col">文章路径</th><th scope="col">访问次数</th><th scope="col">GitHub 读者</th></tr></thead>
+      <tbody>{{range .Articles}}
+        <tr{{if eq .Path $.Article}} class="selected"{{end}}><th scope="row"><a href="/dashboard?days={{$.Period}}&amp;article={{.Path | urlquery}}">{{.Path}}</a></th><td>{{.Views}}</td><td>{{.Readers}}</td></tr>
+      {{end}}</tbody></table></div>
+      {{else}}<p class="empty">所选时段内还没有文章访问。</p>{{end}}
+    </section>
+    <section class="data-section" aria-labelledby="readers-title">
+      <h2 id="readers-title">GitHub 阅读记录</h2>
+      <p class="muted">每位读者每天可为同一篇文章留下一条记录。日期按 UTC 统计。</p>
+      {{if .Readings}}
+      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="readers-title">
+      <table><thead><tr><th scope="col">GitHub ID</th><th scope="col">文章路径</th><th scope="col">确认日期</th></tr></thead>
+      <tbody>{{range .Readings}}
+        <tr><th scope="row"><a href="https://github.com/{{.Login}}" rel="noreferrer">@{{.Login}}</a></th><td><a href="{{$.ArticleOrigin}}{{.Path}}">{{.Path}}</a></td><td><time datetime="{{.Day}}">{{.Day}}</time></td></tr>
+      {{end}}</tbody></table></div>
+      {{else}}<p class="empty">所选范围内还没有读者留下 GitHub 阅读记录。</p>{{end}}
+      {{if or .Prev .Next}}<nav class="paging" aria-label="阅读记录分页">{{if .Prev}}<a href="{{.Prev}}">上一页</a>{{end}}{{if .Next}}<a href="{{.Next}}">下一页</a>{{end}}</nav>{{end}}
+    </section>
+  </div>
+</main>
+{{template "footer" .}}{{end}}
+
+{{define "access"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="workspace">
+  <section class="page-intro">
+    <div><h1>访问权限<span class="dot">.</span></h1><p>核心管理员可暂停或恢复其他 sec4si 组织管理员的后台访问。</p></div>
+    <a class="quiet-link" href="/dashboard">返回阅读统计</a>
+  </section>
+  <div class="paper">
+    {{if .AccessSaved}}<p class="saved" role="status">访问权限已更新。</p>{{end}}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="组织管理员">
+      <table><thead><tr><th scope="col">GitHub ID</th><th scope="col">后台权限</th><th scope="col">操作</th></tr></thead>
+      <tbody>{{range .Owners}}
+        <tr>
+          <th scope="row">@{{.Login}}</th>
+          <td>{{if .Core}}核心管理员{{else if .Blocked}}已暂停{{else}}可查看统计{{end}}</td>
+          <td>{{if not .Core}}
+            <form method="post" action="/access">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <input type="hidden" name="id" value="{{.ID}}">
+              {{if .Blocked}}<button class="row-button" name="change" value="restore" aria-label="恢复 @{{.Login}} 的后台权限">恢复</button>
+              {{else}}<button class="row-button" name="change" value="block" aria-label="暂停 @{{.Login}} 的后台权限">暂停</button>{{end}}
+            </form>
+          {{else}}<span aria-hidden="true">—</span>{{end}}</td>
+        </tr>
+      {{end}}</tbody></table>
+    </div>
+  </div>
+</main>
+{{template "footer" .}}{{end}}
+
+{{define "read"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="simple">
+  {{if .Recorded}}
+  <h1>阅读记录已提交<span class="dot">.</span></h1>
+  <a class="primary" href="{{.BackToArticle}}">返回文章</a>
+  {{else}}
+  <h1>留下阅读记录<span class="dot">.</span></h1>
+  <p>确认后，sec4si 的统计管理员可查看你的 GitHub ID、这篇文章和确认日期。记录保留 90 天。</p>
+  <dl class="confirmation"><div><dt>GitHub ID</dt><dd>@{{.User.Login}}</dd></div><div><dt>文章</dt><dd><a href="{{.BackToArticle}}">{{.Article}}</a></dd></div></dl>
+  <div class="actions">
+    <form method="post" action="/read">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="primary" type="submit">确认留下记录</button>
+    </form>
+    <a class="quiet-link" href="{{.BackToArticle}}">返回文章</a>
+  </div>
+  {{end}}
+</main>
+{{template "footer" .}}{{end}}
+
+{{define "privacy"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="simple">
+  <h1>阅读数据说明<span class="dot">.</span></h1>
+  <h2>匿名计数</h2>
+  <p>启用统计的文章提交文章路径。服务器按日期累计访问次数，并尊重浏览器的 Global Privacy Control 和 Do Not Track 信号。匿名统计保留 90 天。</p>
+  <h2>GitHub 阅读记录</h2>
+  <p>从文章进入 GitHub 登录并明确确认后，系统会保存 GitHub ID、文章路径和确认日期，供获准的 sec4si 组织管理员查看。记录保留 90 天。</p>
+  <h2>后台登录</h2>
+  <p>GitHub 组织权限用于核验管理员身份。会话仅用于当前服务，管理员会话在 30 分钟后到期。</p>
+  <a class="quiet-link" href="{{.ArticleOrigin}}/articles/">返回文章目录</a>
+</main>
+{{template "footer" .}}{{end}}
+
+{{define "problem"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="simple">
+  <h1>{{.Problem}}<span class="dot">.</span></h1>
+  <p>{{.Description}}</p>
+  <a class="primary" href="/">返回 Metric</a>
+</main>
+{{template "footer" .}}{{end}}
