@@ -325,7 +325,7 @@ func (a *app) callback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.token = token
-		age, suffix, destination = sessionLifetime, "admin", "/dashboard"
+		age, suffix, destination = sessionLifetime, "admin", "/visits"
 	}
 	id := randomToken()
 	s.expires = time.Now().Add(age)
@@ -370,7 +370,7 @@ func (a *app) admin(w http.ResponseWriter, r *http.Request, coreOnly bool) (sess
 		return session{}, false
 	}
 	if coreOnly && !isCore(s.user.ID) {
-		a.problem(w, http.StatusForbidden, "只有核心管理员可以管理权限", "组织管理员可查看阅读统计。")
+		a.problem(w, http.StatusForbidden, "只有核心管理员可以管理权限", "组织管理员可以查看统计数据。")
 		return session{}, false
 	}
 	return s, true

@@ -27,6 +27,20 @@ go run .
 
 Open [the local site](http://127.0.0.1:9841/). Without a GitHub OAuth configuration, the home, privacy, ingestion, and health endpoints are available. The integration tests exercise the OAuth exchange and owner and reader flows against a local GitHub fixture.
 
+## Actions statistics
+
+The Actions dashboard is available to current sec4si organization owners under the same access controls as reading statistics. It shows repository, workflow, time, status, and the GitHub account responsible for each execution. Initial attempts use the workflow actor and reruns use the triggering actor returned for each attempt. The account table separates GitHub user and bot accounts.
+
+Register a private GitHub App owned by sec4si with read-only Repository Actions and Metadata permissions. Install it on all repositories in sec4si. Set METRIC_ACTIONS_APP_ID to the App ID in the service environment and use LoadCredential=github-actions-key:/etc/sec4si-metric/github-actions-key.pem in a separate systemd drop-in. Store the new App key at that path with root-only permissions. For local testing, METRIC_ACTIONS_KEY_FILE can point to a development App key.
+
+The service syncs every 15 minutes and displays the most recent 90 calendar days in Beijing time. The dashboard reports repository coverage and the last successful sync. The workflow record includes the associated commit SHA, Git author, and committer when GitHub supplies them.
+
+## Site visits
+
+The owner dashboard includes visits to sec4.si, benchmark.sec4.si, lens.sec4.si, and infer.sec4.si. The shared script in integrations/visit-metrics.js sends the page path and referrer hostname. The reverse proxy supplies the source IP from the connection. Page counts are kept for 90 days. Detailed records containing an IP, referrer hostname, path, and time are kept for seven days. Visits to articles on sec4.si also update their existing reading counts.
+
+Each participating site includes the script and links to the Metric privacy page. The browser and collection endpoints respect Global Privacy Control and Do Not Track.
+
 ## Production setup
 
 1. Create a DNS-only A record for `metric.sec4.si` pointing to the server. Route HTTPS to `127.0.0.1:9841` on the server. The reverse proxy should set `X-Real-IP` to the source address, keep access logging disabled for this hostname, and obtain a trusted certificate. [Caddy example](ops/metric.caddy)

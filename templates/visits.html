@@ -1,0 +1,51 @@
+{{define "visitsDashboard"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="workspace">
+  <section class="page-intro">
+    <div><h1>站点访问<span class="dot">.</span></h1><p>查看 sec4si 各项目站点的访问情况</p></div>
+    <form class="filters" method="get" action="/visits">
+      <label>站点<select name="site"><option value="">全部站点</option>
+        {{range .Visits.Sites}}<option value="{{.Origin}}"{{if eq .Origin $.Visits.Site}} selected{{end}}>{{.Name}}</option>{{end}}
+      </select></label>
+      <label>时段<select name="days">
+        <option value="7" {{if eq .Period 7}}selected{{end}}>近 7 天</option>
+        <option value="30" {{if eq .Period 30}}selected{{end}}>近 30 天</option>
+        <option value="90" {{if eq .Period 90}}selected{{end}}>近 90 天</option>
+      </select></label>
+      <button class="primary" type="submit">查看</button>
+    </form>
+  </section>
+  <div class="paper">
+    <dl class="summary" aria-label="站点访问概览">
+      <div><dt>页面访问次数</dt><dd>{{.Visits.Views}}</dd></div>
+      <div><dt>明细窗口内来源 IP 数</dt><dd>{{.Visits.SourceIPs}}</dd></div>
+      <div><dt>覆盖站点</dt><dd>{{len .Visits.Sites}}</dd></div>
+    </dl>
+    <section class="data-section" aria-labelledby="site-pages-title">
+      <h2 id="site-pages-title">热门页面</h2>
+      {{if .Visits.Pages}}
+      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="site-pages-title">
+        <table><thead><tr><th scope="col">站点</th><th scope="col">页面</th><th scope="col">访问次数</th></tr></thead>
+          <tbody>{{range .Visits.Pages}}<tr><td>{{.Site}}</td><th scope="row"><code>{{.Path}}</code></th><td>{{.Views}}</td></tr>{{end}}</tbody>
+        </table>
+      </div>
+      {{else}}<p class="empty">此范围内还没有站点访问。</p>{{end}}
+    </section>
+    <section class="data-section" aria-labelledby="site-details-title">
+      <h2 id="site-details-title">近期访问明细</h2>
+      <p class="muted">IP 明细保留 7 天，时间按北京时间显示。</p>
+      {{if .Visits.Details}}
+      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="site-details-title">
+        <table><thead><tr><th scope="col">时间</th><th scope="col">站点</th><th scope="col">页面</th><th scope="col">来源 IP</th><th scope="col">来源域</th></tr></thead>
+          <tbody>{{range .Visits.Details}}<tr>
+            <td class="actions-cell"><time datetime="{{.Seen.Format "2006-01-02T15:04:05Z07:00"}}">{{.Seen.Format "01-02 15:04:05"}}</time></td>
+            <td>{{.Site}}</td><th scope="row"><code>{{.Path}}</code></th><td class="actions-cell"><code>{{.IP}}</code></td>
+            <td>{{if .Referrer}}{{.Referrer}}{{else}}—{{end}}</td>
+          </tr>{{end}}</tbody>
+        </table>
+      </div>
+      {{else}}<p class="empty">此范围内还没有近期访问明细。</p>{{end}}
+      {{if or .Prev .Next}}<nav class="paging" aria-label="访问明细分页">{{if .Prev}}<a href="{{.Prev}}">上一页</a>{{end}}{{if .Next}}<a href="{{.Next}}">下一页</a>{{end}}</nav>{{end}}
+    </section>
+  </div>
+</main>
+{{template "footer" .}}{{end}}

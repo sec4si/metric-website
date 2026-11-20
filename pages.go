@@ -29,6 +29,8 @@ type page struct {
 	Articles      []articleTotals
 	Readings      []reading
 	Owners        []ownerRow
+	Actions       actionsPage
+	Visits        visitsPage
 	Prev          string
 	Next          string
 }
@@ -60,14 +62,14 @@ func (a *app) problem(w http.ResponseWriter, status int, title, description stri
 func (a *app) home(w http.ResponseWriter, r *http.Request) {
 	s, signedIn := a.auth.getSession(a.cookie(r, "admin"))
 	if signedIn && s.token != "" {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		http.Redirect(w, r, "/visits", http.StatusSeeOther)
 		return
 	}
-	a.render(w, "home", http.StatusOK, page{Title: "阅读统计"})
+	a.render(w, "home", http.StatusOK, page{Title: "站点访问"})
 }
 
 func (a *app) privacy(w http.ResponseWriter, _ *http.Request) {
-	a.render(w, "privacy", http.StatusOK, page{Title: "阅读数据说明"})
+	a.render(w, "privacy", http.StatusOK, page{Title: "访问数据说明"})
 }
 
 func dashboardURL(period int, article string, index int) string {

@@ -13,7 +13,9 @@
     <a class="brand" href="/"><span class="monogram" aria-hidden="true">[/]</span><span>sec4<span class="dot">.</span>si</span><span class="product">METRIC</span></a>
     <nav aria-label="主导航">
       {{if .Core}}<a href="/access">权限</a>{{end}}
-      {{if .User.Login}}{{if not .Article}}<a href="/dashboard">统计</a>
+      {{if .User.Login}}{{if not .Article}}<a href="/visits"{{if eq .Title "站点访问"}} aria-current="page"{{end}}>站点访问</a>
+      <a href="/actions"{{if eq .Title "Actions 统计"}} aria-current="page"{{end}}>Actions</a>
+      <a href="/dashboard"{{if eq .Title "阅读统计"}} aria-current="page"{{end}}>阅读统计</a>
       <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="nav-button" type="submit">退出</button></form>{{end}}{{end}}
       <a href="{{.ArticleOrigin}}/articles/">文章</a>
     </nav>
@@ -21,15 +23,15 @@
 {{end}}
 
 {{define "footer"}}
-  <footer class="site-footer"><span class="mono">SEC4.SI / METRIC</span><a href="/privacy">阅读数据说明</a><a href="https://github.com/sec4si/metric-website">GitHub 源码</a></footer>
+  <footer class="site-footer"><span class="mono">SEC4.SI / METRIC</span><a href="/privacy">访问数据说明</a><a href="https://github.com/sec4si/metric-website">GitHub 源码</a></footer>
 </body>
 </html>{{end}}
 
 {{define "home"}}{{template "header" .}}
 <main id="main" tabindex="-1" class="login">
   <div class="login-copy">
-    <h1>Reader<br><em>Metrics<span class="dot">.</span></em></h1>
-    <p>查看 sec4.si 文章的访问次数，以及读者主动留下的 GitHub 阅读记录。</p>
+    <h1>Site<br><em>Metrics<span class="dot">.</span></em></h1>
+    <p>查看 sec4si 站点的访问来源、文章阅读记录和仓库的 GitHub Actions 活动。</p>
     {{if .OAuthReady}}
     <a class="primary" href="/oauth/start">用 GitHub 登录</a>
     {{else}}
@@ -39,8 +41,9 @@
   </div>
   <div class="login-aside">
     <dl>
-      <div><dt>匿名访问</dt><dd>按文章和时段查看浏览次数。</dd></div>
+      <div><dt>站点访问</dt><dd>按站点和页面查看访问次数、来源域和近期 IP。</dd></div>
       <div><dt>GitHub 阅读记录</dt><dd>查看读者确认提交的 GitHub ID。</dd></div>
+      <div><dt>GitHub Actions</dt><dd>查看工作流的执行账号和关联提交。</dd></div>
     </dl>
   </div>
 </main>
@@ -146,9 +149,10 @@
 
 {{define "privacy"}}{{template "header" .}}
 <main id="main" tabindex="-1" class="simple">
-  <h1>阅读数据说明<span class="dot">.</span></h1>
-  <h2>匿名计数</h2>
-  <p>启用统计的文章提交文章路径。服务器按日期累计访问次数，并尊重浏览器的 Global Privacy Control 和 Do Not Track 信号。匿名统计保留 90 天。</p>
+  <h1>访问数据说明<span class="dot">.</span></h1>
+  <h2>站点访问统计</h2>
+  <p>启用统计的 sec4si 站点会在页面打开后向 Metric 发送页面路径和来源域名。服务器记录访问时间及连接的来源 IP，访问统计无需登录。详细访问记录保留 7 天，按日汇总的页面访问次数保留 90 天。获准的 sec4si 组织管理员可查看记录。</p>
+  <p>访问统计尊重浏览器的 Global Privacy Control 和 Do Not Track 信号。</p>
   <h2>GitHub 阅读记录</h2>
   <p>从文章进入 GitHub 登录并明确确认后，系统会保存 GitHub ID、文章路径和确认日期，供获准的 sec4si 组织管理员查看。记录保留 90 天。</p>
   <h2>后台登录</h2>

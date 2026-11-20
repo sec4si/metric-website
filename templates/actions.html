@@ -1,0 +1,70 @@
+{{define "actionsDashboard"}}{{template "header" .}}
+<main id="main" tabindex="-1" class="workspace">
+  <section class="page-intro">
+    <div><h1>GitHub Actions<span class="dot">.</span></h1><p>sec4si 组织的工作流触发和重跑记录</p></div>
+    {{if .Actions.SyncedAt}}
+    <form class="filters" method="get" action="/actions">
+      {{if .Actions.ActorID}}<input type="hidden" name="actor" value="{{.Actions.ActorID}}">{{end}}
+      <label>仓库<select name="repo"><option value="0">全部仓库</option>
+        {{range .Actions.Repositories}}<option value="{{.ID}}"{{if eq .ID $.Actions.RepositoryID}} selected{{end}}>{{.Name}}</option>{{end}}
+      </select></label>
+      <label>时段<select name="days">
+        <option value="7" {{if eq .Period 7}}selected{{end}}>近 7 天</option>
+        <option value="30" {{if eq .Period 30}}selected{{end}}>近 30 天</option>
+        <option value="90" {{if eq .Period 90}}selected{{end}}>近 90 天</option>
+      </select></label>
+      <button class="primary" type="submit">查看</button>
+    </form>
+    {{end}}
+  </section>
+  <div class="paper">
+    {{if not .Actions.Configured}}<p class="empty">等待配置 sec4si 的 GitHub Actions 只读授权。</p>
+    {{else if not .Actions.SyncedAt}}<p class="empty">{{if .Actions.SyncFailed}}首次同步失败。请检查 GitHub App 安装状态。{{else}}正在等待首次同步。{{end}}</p>
+    {{else}}
+      <p class="muted">已同步 {{len .Actions.Repositories}} 个仓库。更新时间 {{.Actions.SyncedAt}}（北京时间）。{{if .Actions.SyncFailed}}最近一次同步失败，显示上次成功同步的数据。{{end}}{{if .Actions.Unavailable}}有 {{.Actions.Unavailable}} 次历史尝试在 GitHub 上不可读取。{{end}}</p>
+      {{if .Actions.ActorID}}<p class="muted">当前按账号筛选。<a href="{{.Actions.ClearActor}}">查看全部账号</a></p>{{end}}
+      <dl class="summary" aria-label="Actions 概览">
+        <div><dt>执行次数</dt><dd>{{.Actions.Executions}}</dd></div>
+        <div><dt>GitHub 用户数</dt><dd>{{.Actions.People}}</dd></div>
+        <div><dt>重跑次数</dt><dd>{{.Actions.Reruns}}</dd></div>
+      </dl>
+      <section class="data-section" aria-labelledby="action-accounts-title">
+        <h2 id="action-accounts-title">按账号查看</h2>
+        <p class="muted">首跑按触发人统计，重跑按发起此次重跑的账号统计。</p>
+        {{if .Actions.Accounts}}
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="action-accounts-title">
+          <table><thead><tr><th scope="col">GitHub 账号</th><th scope="col">类型</th><th scope="col">执行次数</th><th scope="col">重跑次数</th></tr></thead>
+          <tbody>{{range .Actions.Accounts}}<tr{{if eq .ID $.Actions.ActorID}} class="selected"{{end}}>
+            <th scope="row"><a href="{{.FilterURL}}">@{{.Login}}</a></th>
+            <td>{{if eq .Type "Bot"}}机器人{{else if eq .Type "User"}}用户{{else}}{{.Type}}{{end}}</td>
+            <td>{{.Executions}}</td><td>{{.Reruns}}</td>
+          </tr>{{end}}</tbody></table>
+        </div>
+        {{else}}<p class="empty">所选范围内还没有可归属的执行账号。</p>{{end}}
+      </section>
+      <section class="data-section" aria-labelledby="action-runs-title">
+        <h2 id="action-runs-title">执行明细</h2>
+        <p class="muted">执行账号来自 GitHub Actions，关联提交的作者和提交人使用 Git 署名。</p>
+        {{if .Actions.Runs}}
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="action-runs-title">
+          <table><thead><tr><th scope="col">时间</th><th scope="col">仓库</th><th scope="col">工作流</th><th scope="col">执行账号</th><th scope="col">关联提交</th><th scope="col">Git 作者</th><th scope="col">Git 提交人</th><th scope="col">事件</th><th scope="col">尝试</th><th scope="col">结果</th></tr></thead>
+          <tbody>{{range .Actions.Runs}}<tr>
+            <td class="actions-cell"><time datetime="{{.Created.Format "2006-01-02T15:04:05Z07:00"}}">{{.TimeLabel}}</time></td>
+            <td>{{.Repository}}</td>
+            <th scope="row"><a href="{{.RunURL}}" rel="noreferrer">{{if .Workflow}}{{.Workflow}}{{else}}运行 {{.RunID}}{{end}}</a></th>
+            <td>{{if .Actor.Login}}@{{.Actor.Login}}{{else}}未提供{{end}}</td>
+            <td>{{if .CommitURL}}<a href="{{.CommitURL}}" rel="noreferrer"><code>{{.CommitID}}</code></a>{{else}}—{{end}}</td>
+            <td>{{if .CommitAuthor}}{{.CommitAuthor}}{{else}}—{{end}}</td>
+            <td>{{if .Committer}}{{.Committer}}{{else}}—{{end}}</td>
+            <td><code>{{.Event}}</code></td>
+            <td class="actions-cell">{{.Attempt}}{{if gt .Attempt 1}} · 重跑{{end}}</td>
+            <td>{{if .Result}}{{.Result}}{{else}}{{.Status}}{{end}}</td>
+          </tr>{{end}}</tbody></table>
+        </div>
+        {{else}}<p class="empty">所选范围内还没有运行记录。</p>{{end}}
+        {{if or .Prev .Next}}<nav class="paging" aria-label="执行记录分页">{{if .Prev}}<a href="{{.Prev}}">上一页</a>{{end}}{{if .Next}}<a href="{{.Next}}">下一页</a>{{end}}</nav>{{end}}
+      </section>
+    {{end}}
+  </div>
+</main>
+{{template "footer" .}}{{end}}

@@ -49,9 +49,10 @@ button { cursor: pointer; }
 .brand { display: inline-flex; align-items: center; gap: .625rem; font-weight: 600; font-size: 1.55rem; letter-spacing: -.055em; text-decoration: none; }
 .monogram { font-family: "IBM Plex Mono", monospace; font-size: 1.125rem; letter-spacing: -.1em; }
 .product { border-left: 1px solid var(--rule); padding-left: .625rem; color: var(--dim); font: .75rem "IBM Plex Mono", monospace; letter-spacing: .07em; }
-.topbar nav { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+.topbar nav { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
 .topbar nav a, .nav-button { display: inline-flex; min-height: 2.75rem; align-items: center; background: none; border: 0; padding: 0; color: var(--paper); text-decoration: none; font-size: .875rem; }
 .nav-button:hover, .topbar nav a:hover, .site-footer a:hover { color: var(--lime); }
+.topbar nav a[aria-current="page"] { color: var(--lime); }
 .login {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
@@ -117,6 +118,7 @@ button { cursor: pointer; }
 .muted { color: #506044; font-size: .9rem; line-height: 1.55; }
 .empty { padding: 1rem 0; border-block: 1px solid var(--paper-rule); color: #506044; }
 .table-scroll { overflow-x: auto; }
+.actions-cell { white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; text-align: left; font-size: .93rem; }
 th, td { border-bottom: 1px solid var(--paper-rule); padding: .85rem .6rem; vertical-align: middle; overflow-wrap: anywhere; }
 th:first-child, td:first-child { padding-left: 0; }

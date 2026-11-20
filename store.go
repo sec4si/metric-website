@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,6 +28,7 @@ func openStore(path string) (*store, error) {
 	if _, err = db.Exec(`
 		PRAGMA journal_mode = WAL;
 		PRAGMA busy_timeout = 5000;
+		PRAGMA secure_delete = ON;
 		CREATE TABLE IF NOT EXISTS article_views (
 			path TEXT NOT NULL,
 			day TEXT NOT NULL,
@@ -44,6 +47,27 @@ func openStore(path string) (*store, error) {
 			blocked_by INTEGER NOT NULL,
 			blocked_at TEXT NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS actions_snapshot (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			snapshot TEXT NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS site_daily_views (
+			site TEXT NOT NULL,
+			path TEXT NOT NULL,
+			day TEXT NOT NULL,
+			views INTEGER NOT NULL,
+			PRIMARY KEY (site, path, day)
+		);
+		CREATE TABLE IF NOT EXISTS site_visit_details (
+			id INTEGER PRIMARY KEY,
+			site TEXT NOT NULL,
+			path TEXT NOT NULL,
+			ip TEXT NOT NULL,
+			referrer TEXT NOT NULL,
+			visited_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS site_daily_views_day ON site_daily_views(day);
+		CREATE INDEX IF NOT EXISTS site_visit_details_time ON site_visit_details(visited_at);
 		CREATE INDEX IF NOT EXISTS article_views_day ON article_views(day);
 		CREATE INDEX IF NOT EXISTS reading_records_day ON reading_records(day);
 	`); err != nil {
@@ -68,6 +92,12 @@ func (s *store) prune(ctx context.Context, now time.Time) error {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, "DELETE FROM reading_records WHERE day < ?", cutoff); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, "DELETE FROM site_visit_details WHERE visited_at < ?", now.Add(-visitIPRetention).Unix()); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, "DELETE FROM site_daily_views WHERE day < ?", reportingSince(now, retentionDays).In(reportingTimeZone).Format("2006-01-02")); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -170,4 +200,28 @@ func (s *store) setBlocked(ctx context.Context, id, actor int64, blocked bool) e
 	}
 	_, err := s.db.ExecContext(ctx, "DELETE FROM blocked_owners WHERE github_id = ?", id)
 	return err
+}
+
+func (s *store) saveActionsSnapshot(ctx context.Context, snapshot actionsSnapshot) error {
+	payload, err := json.Marshal(snapshot)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO actions_snapshot (id, snapshot) VALUES (1, ?)
+		ON CONFLICT (id) DO UPDATE SET snapshot = excluded.snapshot`, string(payload))
+	return err
+}
+
+func (s *store) actionsSnapshot(ctx context.Context) (actionsSnapshot, error) {
+	var snapshot actionsSnapshot
+	var payload string
+	err := s.db.QueryRowContext(ctx, "SELECT snapshot FROM actions_snapshot WHERE id = 1").Scan(&payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return snapshot, nil
+	}
+	if err != nil {
+		return snapshot, err
+	}
+	err = json.Unmarshal([]byte(payload), &snapshot)
+	return snapshot, err
 }
